@@ -34,8 +34,8 @@ public class IntegratedGatewayTest {
     public static void main(String[] args) {
         System.out.println("=== STARTING DUAL-LAYER SECURITY GATEWAY TEST ===\n");
 
-        File   transactionFile = new File("offline_sync_log.csv");
-        String stateCache      = "gateway_state.ser";
+        File transactionFile = new File("offline_sync_log.csv");
+        String stateCache = "gateway_state.ser";
 
         // Bloom Filter bit-array size of 1000 — sufficient for this test volume.
         AdvancedSecurityGateway<Transaction> gateway = new AdvancedSecurityGateway<>(1000);

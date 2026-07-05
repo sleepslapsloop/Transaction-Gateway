@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-// ── Custom Exception ───────────────────────────────────────────────────────────
+// --- Custom Exception ---
 
 class SecurityViolationException extends Exception {
     public SecurityViolationException(String message) {
@@ -36,58 +36,73 @@ class SecurityViolationException extends Exception {
     }
 }
 
-// ── Strategy Interface ─────────────────────────────────────────────────────────
-// Both security layers implement this contract, making the gateway open for
-// extension (additional layers) without modifying existing code (OCP).
+// --- Strategy Interface ---
+// Both security layers implement this contract (Strategy pattern / OCP).
 
 interface SecurityLayer extends Serializable {
     void execute(File file) throws SecurityViolationException, IOException;
 }
 
-// ── Bloom Filter ───────────────────────────────────────────────────────────────
-// Uses two genuinely independent hash functions to minimize correlated
-// collisions and achieve a lower false-positive rate than the original.
+// --- Bloom Filter ---
+//
+// Double-hashing construction: generates NUM_HASHES independent bit probes
+// from two base hash functions using probe_i = (h1 + i*h2) mod m.
+// This is the standard Kirsch-Mitzenmacher technique and avoids needing
+// NUM_HASHES separate hash implementations.
+//
+// False positive rates (n = 10M entries):
+//   k=2,  m=130M  -> 2.03%   (~203k FP per 10M lookups)  [old]
+//   k=7,  m=500M  -> 0.0001% (~6   FP per 10M lookups)   [new]
 
 class TransactionBloomFilter implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
     private final BitSet bitSet;
     private final int    bitSetSize;
+    private static final int NUM_HASHES = 7;
 
     public TransactionBloomFilter(int size) {
         this.bitSetSize = size;
         this.bitSet     = new BitSet(size);
     }
 
-    // Hash 1: Java's built-in polynomial hash, safely masked to avoid
-    // Integer.MIN_VALUE (which has no positive int representation).
-    private int hash1(String id) {
+    // Base hash 1: Java built-in polynomial hash.
+    // Masked with MAX_VALUE to guarantee a non-negative result.
+    private int h1(String id) {
         return (id.hashCode() & Integer.MAX_VALUE) % bitSetSize;
     }
 
-    // Hash 2: FNV-1a — a well-known non-cryptographic hash with very
-    // different avalanche properties from Java's polynomial hash, giving
-    // the two probes genuine independence.
-    private int hash2(String id) {
-        int hash = 0x811c9dc5;          // FNV offset basis
+    // Base hash 2: FNV-1a — different avalanche properties from h1,
+    // giving double-hashing genuine probe independence.
+    private int h2(String id) {
+        int hash = 0x811c9dc5;
         for (char c : id.toCharArray()) {
             hash ^= c;
-            hash *= 0x01000193;         // FNV prime
+            hash *= 0x01000193;
         }
         return (hash & Integer.MAX_VALUE) % bitSetSize;
     }
 
-    public void add(String transactionId) {
-        bitSet.set(hash1(transactionId));
-        bitSet.set(hash2(transactionId));
+    // i-th probe index: (h1 + i*h2) mod m.
+    // Cast to long before multiply to prevent int overflow.
+    private int probe(int a, int b, int i) {
+        return (int) (((long) a + (long) i * b) % bitSetSize);
     }
 
-    /** Returns true if the ID was previously added (no false negatives). */
+    public void add(String transactionId) {
+        int a = h1(transactionId), b = h2(transactionId);
+        for (int i = 0; i < NUM_HASHES; i++) bitSet.set(probe(a, b, i));
+    }
+
+    /** Returns true if the ID was previously added. No false negatives. */
     public boolean contains(String transactionId) {
-        return bitSet.get(hash1(transactionId)) && bitSet.get(hash2(transactionId));
+        int a = h1(transactionId), b = h2(transactionId);
+        for (int i = 0; i < NUM_HASHES; i++)
+            if (!bitSet.get(probe(a, b, i))) return false;
+        return true;
     }
 }
 
-// ── Transaction Data Holder ────────────────────────────────────────────────────
+// --- Transaction Data Holder ---
 
 class Transaction implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -108,32 +123,25 @@ class Transaction implements Serializable {
     }
 }
 
-// ── Main Gateway ───────────────────────────────────────────────────────────────
-// Uses the Strategy pattern: holds two SecurityLayer implementations as
-// static nested classes. Each layer encapsulates its own state and logic,
-// keeping the gateway itself free of parsing or hashing details.
+// --- Main Gateway (Strategy pattern with two static nested layer classes) ---
 
 public class AdvancedSecurityGateway<T> implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Static Nested Class 1 — Layer 1: Guava Integrity Check (Strategy A)
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
+    // Static Nested Class 1: Layer 1 -- Guava SHA-256 Integrity (Strategy A)
+    // =========================================================================
     static class GuavaIntegrityLayer implements SecurityLayer {
         private static final long serialVersionUID = 1L;
         private String expectedChecksum;
 
-        public GuavaIntegrityLayer() {
-            this.expectedChecksum = "";
-        }
+        public GuavaIntegrityLayer() { this.expectedChecksum = ""; }
 
         public void setExpectedChecksum(String checksum) {
             this.expectedChecksum = checksum;
         }
 
-        public String getExpectedChecksum() {
-            return expectedChecksum;
-        }
+        public String getExpectedChecksum() { return expectedChecksum; }
 
         @Override
         public void execute(File file) throws SecurityViolationException, IOException {
@@ -149,9 +157,9 @@ public class AdvancedSecurityGateway<T> implements Serializable {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Static Nested Class 2 — Layer 2: Bloom Filter Deduplication (Strategy B)
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
+    // Static Nested Class 2: Layer 2 -- Bloom Filter Deduplication (Strategy B)
+    // =========================================================================
     static class BloomFilterLayer implements SecurityLayer {
         private static final long serialVersionUID = 1L;
         private final TransactionBloomFilter filter;
@@ -162,7 +170,6 @@ public class AdvancedSecurityGateway<T> implements Serializable {
             this.validatedBuffer = new ArrayList<>();
         }
 
-        /** Returns a defensive copy of the validated transaction list. */
         public List<Transaction> getValidatedBuffer() {
             return new ArrayList<>(validatedBuffer);
         }
@@ -171,7 +178,7 @@ public class AdvancedSecurityGateway<T> implements Serializable {
         public void execute(File file) throws SecurityViolationException, IOException {
             validatedBuffer.clear();
             try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-                br.readLine(); // skip header row
+                br.readLine(); // skip header
                 String line;
                 while ((line = br.readLine()) != null) {
                     String[] tokens = line.split(",");
@@ -181,8 +188,6 @@ public class AdvancedSecurityGateway<T> implements Serializable {
                     String userId = tokens[1].trim();
                     double amount;
 
-                    // Guard: malformed amount triggers a SecurityViolationException
-                    // instead of leaking a raw NumberFormatException to the caller.
                     try {
                         amount = Double.parseDouble(tokens[2].trim());
                     } catch (NumberFormatException e) {
@@ -207,9 +212,9 @@ public class AdvancedSecurityGateway<T> implements Serializable {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Gateway fields — composed of the two layer strategies
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
+    // Gateway: composed of the two layer strategies
+    // =========================================================================
     private final GuavaIntegrityLayer integrityLayer;
     private final BloomFilterLayer    deduplicateLayer;
 
@@ -218,40 +223,27 @@ public class AdvancedSecurityGateway<T> implements Serializable {
         this.deduplicateLayer = new BloomFilterLayer(filterSize);
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
-
     public void setExpectedChecksum(String checksum) {
         integrityLayer.setExpectedChecksum(checksum);
     }
 
-    /** Executes Layer 1 only (integrity check). */
     public void verifyFileIntegrity(File file) throws SecurityViolationException, IOException {
         integrityLayer.execute(file);
     }
 
-    /** Executes Layer 2 only (deduplication). */
     public void processAndDeduplicate(File file) throws SecurityViolationException, IOException {
         deduplicateLayer.execute(file);
     }
 
-    /**
-     * Convenience method: runs both security layers in sequence.
-     * Layer 1 (integrity) must pass before Layer 2 (replay detection) runs.
-     */
     public void runAllLayers(File file) throws SecurityViolationException, IOException {
         integrityLayer.execute(file);
         deduplicateLayer.execute(file);
     }
 
-    /** Returns the validated transactions produced by the last Layer 2 run. */
     public List<Transaction> getValidatedTransactions() {
         return deduplicateLayer.getValidatedBuffer();
     }
 
-    // ── Serialization ─────────────────────────────────────────────────────
-
-    /** Freezes the entire gateway state (including the Bloom Filter bit-array)
-     *  to disk so that deduplication history survives server restarts. */
     public void saveGatewayState(String cachePath) throws IOException {
         try (ObjectOutputStream oos =
                  new ObjectOutputStream(new FileOutputStream(cachePath))) {
@@ -259,7 +251,6 @@ public class AdvancedSecurityGateway<T> implements Serializable {
         }
     }
 
-    /** Restores a previously frozen gateway state from disk. */
     public static AdvancedSecurityGateway<?> loadGatewayState(String cachePath)
             throws IOException, ClassNotFoundException {
         try (ObjectInputStream ois =
