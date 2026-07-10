@@ -129,7 +129,7 @@ class BloomFilterBenchmark {
         System.out.printf( "║  Lookups per second:      %-34s ║%n", String.format("%,.0f", opsPerSecond));
         System.out.printf( "║  Time to scan 1.5Cr txns: %-31.2f ms ║%n", msFor15Cr);
         System.out.println("╠══════════════════════════════════════════════════════════════╣");
-        System.out.printf( "║  Presentation claim:      <1ms per lookup            %s   ║%n",
+        System.out.printf( "║  Presentation claim:      <1ms per lookup        %s ║%n",
             nsPerOp < 1_000_000 ? "[CONFIRMED]" : "[EXCEEDED] ");
         System.out.println("╚══════════════════════════════════════════════════════════════╝");
 
