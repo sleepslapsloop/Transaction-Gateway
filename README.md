@@ -77,13 +77,6 @@ Adding a third layer (e.g. rate-limiting) means implementing `SecurityLayer` —
 - `h2(id)` — an independently implemented FNV-1a hash (different avalanche behaviour from `h1`)
 - `probe_i = (h1 + i × h2) mod m` for `i = 0 … k-1`, computed in `long` precision to avoid overflow at large filter sizes
 
-| Version | Hashes (k) | Bits (m) @ n=10M | False-positive rate |
-|---|---|---|---|
-| Original | 2 | 130,000,000 | ≈ 2.03% (~203k FP / 10M lookups) |
-| **Current** | **7** | **500,000,000** | **≈ 0.0001% (~6 FP / 10M lookups)** |
-
-The bit array is sized at ~50 bits per expected entry, keeping the false-positive rate constant regardless of scale.
-
 ---
 
 ## Project Structure
