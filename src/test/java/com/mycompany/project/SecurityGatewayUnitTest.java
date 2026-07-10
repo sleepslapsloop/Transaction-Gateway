@@ -9,28 +9,7 @@
  * @author mridul
  */
 
-/*
- * CS F213 Object Oriented Programming Project
- * BITS Pilani | Summer 2026
- *
- * SecurityGatewayUnitTest — JUnit 5 unit tests for all gateway components.
- *
- * Dependencies required in pom.xml:
- *
- *   <dependency>
- *     <groupId>org.junit.jupiter</groupId>
- *     <artifactId>junit-jupiter</artifactId>
- *     <version>5.10.2</version>
- *     <scope>test</scope>
- *   </dependency>
- *   <dependency>
- *     <groupId>com.google.guava</groupId>
- *     <artifactId>guava</artifactId>
- *     <version>33.2.0-jre</version>
- *   </dependency>
- *
- * Run with: mvn test  (or right-click → Test File in NetBeans)
- */
+
 
 
 package com.mycompany.project;
@@ -49,8 +28,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Security Gateway — Unit Test Suite")
 class SecurityGatewayUnitTest {
 
-    // JUnit 5 creates a fresh temp directory per test class run and
-    // cleans it up automatically — no manual file management needed.
     @TempDir
     Path tempDir;
 
@@ -63,9 +40,6 @@ class SecurityGatewayUnitTest {
         gateway = new AdvancedSecurityGateway<>(1000);
     }
 
-    // ── Shared helpers ────────────────────────────────────────────────────────
-
-    /** Writes a CSV with a fixed header followed by the given data rows. */
     private void writeCSV(String... rows) throws IOException {
         try (PrintWriter pw = new PrintWriter(csvFile)) {
             pw.println("TxID,UserID,Amount");
@@ -77,15 +51,11 @@ class SecurityGatewayUnitTest {
         return Files.asByteSource(file).hash(Hashing.sha256()).toString();
     }
 
-    /** Computes and registers the file's hash on the gateway, then runs Layer 1. */
     private void trustAndVerify(File file) throws Exception {
         gateway.setExpectedChecksum(sha256(file));
         gateway.verifyFileIntegrity(file);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Layer 1 — Guava SHA-256 Integrity Tests
-    // ═══════════════════════════════════════════════════════════════════════════
 
     @Nested
     @DisplayName("Layer 1: Guava integrity check")
@@ -148,9 +118,6 @@ class SecurityGatewayUnitTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Layer 2 — Bloom Filter Deduplication Tests
-    // ═══════════════════════════════════════════════════════════════════════════
 
     @Nested
     @DisplayName("Layer 2: Bloom Filter deduplication")
@@ -231,9 +198,7 @@ class SecurityGatewayUnitTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Bloom Filter Internal Tests
-    // ═══════════════════════════════════════════════════════════════════════════
+
 
     @Nested
     @DisplayName("TransactionBloomFilter internals")
@@ -285,10 +250,6 @@ class SecurityGatewayUnitTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Serialization Tests
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
     @DisplayName("Java serialization (state persistence)")
     class SerializationTests {
@@ -335,7 +296,6 @@ class SecurityGatewayUnitTest {
             File stateFile = tempDir.resolve("state2.ser").toFile();
             gateway.saveGatewayState(stateFile.getAbsolutePath());
 
-            // New batch — no IDs overlap with the saved state.
             writeCSV("TX_002,USER_B,500.00", "TX_003,USER_C,750.00");
             String newHash = sha256(csvFile);
 
@@ -364,9 +324,6 @@ class SecurityGatewayUnitTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // End-to-End Integration Smoke Test
-    // ═══════════════════════════════════════════════════════════════════════════
 
     @Nested
     @DisplayName("End-to-end: full dual-layer pipeline")

@@ -7,18 +7,12 @@
 /**
  *
  * @author angadh
+ * @author mridul
  */
 
 package com.mycompany.project;
 
 /*
- * CS F213 Object Oriented Programming Project
- * BITS Pilani | Summer 2026
- *
- * BloomVsHashSetBenchmark
- * Runs the Bloom Filter vs HashSet comparison at increasing entry counts
- * to show how memory and speed scale as the dataset grows.
- *
  * VM Options: -Xmx2g  (HashSet at 5M entries needs ~440MB alone)
  */
 
@@ -26,12 +20,9 @@ import java.util.HashSet;
 
 public class HashSetBenchmark {
 
-    // Bit-array is sized at 50 bits per entry to keep ~0.0001% FP rate
-    // regardless of scale (ratio stays constant, so FP rate stays constant).
     private static final int BITS_PER_ENTRY = 50;
     private static final int WARMUP         = 50_000;
 
-    // Scales to test — add or remove entries freely
     private static final int[] SCALES = {
         1_000_000,
         2_000_000,
@@ -46,7 +37,6 @@ public class HashSetBenchmark {
         System.out.println("╚══════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
         System.out.println("  Bloom Filter bit-array = 50 bits/entry  (k=7 probes, ~0.0001% FP rate at every scale)\n");
 
-        // Print table header
         System.out.println("  ┌────────────┬──────────────┬──────────────┬──────────────┬──────────────┬──────────────┬───────────────┐");
         System.out.println("  │   Entries  │  BF Memory   │  HS Memory   │  Mem Saving  │  BF Insert   │  HS Insert   │  BF FP Count  │");
         System.out.println("  ├────────────┼──────────────┼──────────────┼──────────────┼──────────────┼──────────────┼───────────────┤");
@@ -73,19 +63,15 @@ public class HashSetBenchmark {
     private static void runScale(int n) {
         int bloomBits = n * BITS_PER_ENTRY;
 
-        // Pre-generate IDs
         String[] known   = ids("TX_KNOWN_",  n);
         String[] unknown = ids("TX_UNSEEN_", n);
 
-        // --- Memory (exact for BitSet, estimated for HashSet) ---
         long bfBytes = bloomBits / 8L;
         long hsBytesEst = (long) n * 88;  // ~88 bytes per String entry in HashMap
 
-        // --- Insert speed ---
         TransactionBloomFilter bf = new TransactionBloomFilter(bloomBits);
         HashSet<String> hs = new HashSet<>(n * 2);
 
-        // Warmup
         TransactionBloomFilter wbf = new TransactionBloomFilter(WARMUP * BITS_PER_ENTRY);
         HashSet<String> whs = new HashSet<>();
         for (int i = 0; i < WARMUP; i++) { wbf.add(known[i]); whs.add(known[i]); }
@@ -98,7 +84,6 @@ public class HashSetBenchmark {
         for (String id : known) hs.add(id);
         long hsInsertNs = System.nanoTime() - t0;
 
-        // --- False positives ---
         long fp = 0;
         for (String id : unknown) if (bf.contains(id)) fp++;
 
@@ -112,7 +97,6 @@ public class HashSetBenchmark {
             fp);
     }
 
-    // Separate pass for lookup — needs structures already populated
     private static void runLookupScale(int n) {
         int bloomBits = n * BITS_PER_ENTRY;
         String[] known = ids("TX_KNOWN_", n);
@@ -121,7 +105,6 @@ public class HashSetBenchmark {
         HashSet<String> hs = new HashSet<>(n * 2);
         for (String id : known) { bf.add(id); hs.add(id); }
 
-        // Warmup
         for (int i = 0; i < WARMUP; i++) {
             bf.contains(known[i % n]);
             hs.contains(known[i % n]);

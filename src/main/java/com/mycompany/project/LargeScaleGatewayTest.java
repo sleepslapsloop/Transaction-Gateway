@@ -6,6 +6,7 @@
 /**
  *
  * @author angadh
+ * @author mridul
  */
 
 package com.mycompany.project;
@@ -15,18 +16,9 @@ import com.google.common.io.Files;
 import java.io.*;
 
 /*
- * CS F213 Object Oriented Programming Project
- * BITS Pilani | Summer 2026
- *
- * LargeScaleGatewayTest
- * Stress-tests AdvancedSecurityGateway against the real 10M-row festival CSV.
- *
- * CSV format (3 columns, with header):
- *   TxID,UserID,Amount
- *   TX_00000000,1455,3556
  *
  * VM Options (NetBeans → Project Properties → Run → VM Options):
- *   -Xmx768m
+ *   -Xmx2g
  */
 
 public class LargeScaleGatewayTest {
@@ -55,9 +47,6 @@ public class LargeScaleGatewayTest {
         new File(STATE_FILE).delete();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Phase 1 + 2: integrity check then deduplication on the full CSV
-    // ─────────────────────────────────────────────────────────────────────────
     private static void phase1_and_2(File csv) throws Exception {
         System.out.println("--- PHASE 1: Layer 1 — SHA-256 Integrity Check ---");
 
@@ -93,13 +82,9 @@ public class LargeScaleGatewayTest {
         System.out.println("done.\n");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Phase 3: reload serialized state, submit replay — Layer 2 must fire
-    // ─────────────────────────────────────────────────────────────────────────
     private static void phase3_Replay(File csv) throws Exception {
         System.out.println("--- PHASE 3: Replay Attack ---");
 
-        // Grab the first TX ID from the real CSV as the replayed ID
         String replayId;
         try (BufferedReader br = new BufferedReader(new FileReader(csv))) {
             br.readLine(); // skip header
@@ -137,9 +122,6 @@ public class LargeScaleGatewayTest {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Phase 4: tamper a file's content — Layer 1 must fire before Layer 2 runs
-    // ─────────────────────────────────────────────────────────────────────────
     private static void phase4_Tamper() throws Exception {
         System.out.println("--- PHASE 4: Tamper Attack ---");
 

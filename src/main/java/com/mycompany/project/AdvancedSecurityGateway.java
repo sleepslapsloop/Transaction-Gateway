@@ -9,15 +9,6 @@
  * @author mridul
  */
 
-/*
- * CS F213 Object Oriented Programming Project
- * BITS Pilani | Summer 2026
- *
- * Dual-Layer Security Gateway for Rs. 1.5 Cr Festival Wallet Ledger
- * Refactored: Strategy pattern (SecurityLayer interface), static nested
- * layer classes, independent Bloom Filter hash functions, guarded CSV
- * parsing, and corrected serialization API.
- */
 
 package com.mycompany.project;
 
@@ -28,7 +19,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-// --- Custom Exception ---
+//Custom Exception
 
 class SecurityViolationException extends Exception {
     public SecurityViolationException(String message) {
@@ -36,23 +27,11 @@ class SecurityViolationException extends Exception {
     }
 }
 
-// --- Strategy Interface ---
-// Both security layers implement this contract (Strategy pattern / OCP).
 
 interface SecurityLayer extends Serializable {
     void execute(File file) throws SecurityViolationException, IOException;
 }
 
-// --- Bloom Filter ---
-//
-// Double-hashing construction: generates NUM_HASHES independent bit probes
-// from two base hash functions using probe_i = (h1 + i*h2) mod m.
-// This is the standard Kirsch-Mitzenmacher technique and avoids needing
-// NUM_HASHES separate hash implementations.
-//
-// False positive rates (n = 10M entries):
-//   k=2,  m=130M  -> 2.03%   (~203k FP per 10M lookups)  [old]
-//   k=7,  m=500M  -> 0.0001% (~6   FP per 10M lookups)   [new]
 
 class TransactionBloomFilter implements Serializable {
     private static final long serialVersionUID = 2L;
@@ -66,13 +45,10 @@ class TransactionBloomFilter implements Serializable {
     }
 
     // Base hash 1: Java built-in polynomial hash.
-    // Masked with MAX_VALUE to guarantee a non-negative result.
     private int h1(String id) {
         return (id.hashCode() & Integer.MAX_VALUE) % bitSetSize;
     }
 
-    // Base hash 2: FNV-1a — different avalanche properties from h1,
-    // giving double-hashing genuine probe independence.
     private int h2(String id) {
         int hash = 0x811c9dc5;
         for (char c : id.toCharArray()) {
@@ -82,8 +58,6 @@ class TransactionBloomFilter implements Serializable {
         return (hash & Integer.MAX_VALUE) % bitSetSize;
     }
 
-    // i-th probe index: (h1 + i*h2) mod m.
-    // Cast to long before multiply to prevent int overflow.
     private int probe(int a, int b, int i) {
         return (int) (((long) a + (long) i * b) % bitSetSize);
     }
@@ -93,7 +67,6 @@ class TransactionBloomFilter implements Serializable {
         for (int i = 0; i < NUM_HASHES; i++) bitSet.set(probe(a, b, i));
     }
 
-    /** Returns true if the ID was previously added. No false negatives. */
     public boolean contains(String transactionId) {
         int a = h1(transactionId), b = h2(transactionId);
         for (int i = 0; i < NUM_HASHES; i++)
@@ -102,7 +75,7 @@ class TransactionBloomFilter implements Serializable {
     }
 }
 
-// --- Transaction Data Holder ---
+//Transaction Data Holder
 
 class Transaction implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -123,14 +96,10 @@ class Transaction implements Serializable {
     }
 }
 
-// --- Main Gateway (Strategy pattern with two static nested layer classes) ---
 
 public class AdvancedSecurityGateway<T> implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // =========================================================================
-    // Static Nested Class 1: Layer 1 -- Guava SHA-256 Integrity (Strategy A)
-    // =========================================================================
     static class GuavaIntegrityLayer implements SecurityLayer {
         private static final long serialVersionUID = 1L;
         private String expectedChecksum;
@@ -157,9 +126,7 @@ public class AdvancedSecurityGateway<T> implements Serializable {
         }
     }
 
-    // =========================================================================
-    // Static Nested Class 2: Layer 2 -- Bloom Filter Deduplication (Strategy B)
-    // =========================================================================
+
     static class BloomFilterLayer implements SecurityLayer {
         private static final long serialVersionUID = 1L;
         private final TransactionBloomFilter filter;
@@ -212,9 +179,7 @@ public class AdvancedSecurityGateway<T> implements Serializable {
         }
     }
 
-    // =========================================================================
-    // Gateway: composed of the two layer strategies
-    // =========================================================================
+
     private final GuavaIntegrityLayer integrityLayer;
     private final BloomFilterLayer    deduplicateLayer;
 
