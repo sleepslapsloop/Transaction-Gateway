@@ -37,9 +37,17 @@ class BloomFilterBenchmark {
     }
 
     @Test
-    @DisplayName("O(1) benchmark: lookup time stays flat as filter scales from 100 to 1M entries")
+    @DisplayName("benchmark: lookup time stays flat as filter scales from 100 to 1M entries")
     void bloomFilterIsConstantTime() {
-        int[] scales = {100, 1_000, 10_000, 100_000, 1_000_000};
+        int[] scales = {
+            10, 20, 30, 40, 50,
+            100, 200, 300, 400, 500,
+            1_000, 2_000, 3_000, 4_000, 5_000,
+            10_000, 20_000, 30_000, 40_000, 50_000,
+            100_000, 200_000, 300_000, 400_000, 500_000,
+            1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000,
+            10_000_000
+        };
 
         System.out.println("\n╔══════════════════════════════════════════════════════════════╗");
         System.out.println("║           BLOOM FILTER SPEED BENCHMARK                       ║");

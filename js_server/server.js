@@ -19,37 +19,31 @@ for (let i = 0; i < 5001; i++) {
 }
 
 const fileName = '/home/angadh/NetBeansProjects/OOP_Project/src/main/java/com/mycompany/project/transactions.csv';
-fs.writeFileSync(fileName, 'TxID,UserID,Amount\n'); // Clear/create the file dynamically
+fs.writeFileSync(fileName, 'TxID,UserID,Amount\n'); 
 
 let buffer = '';
-const chunkSize = 50000; // Write to disk every 50,000 rows to keep RAM low
+const chunkSize = 50000;
 
 console.log('Generating 10 million transactions... Hang tight!');
 
-// 2. Loop 10,000,001 times without storing the IDs in a massive array
 for (let i = 0; i < 10000001; i++) {
     const txId = "TX_" + String(i).padStart(8, '0');
     
-    // Pick two random users from our userIds array
     const user1 = userIds[Math.floor(Math.random() * userIds.length)];
     
 //    let user2 = userIds[Math.floor(Math.random() * userIds.length)];
 //    
-//    // Optional: Ensure user1 and user2 aren't the exact same person
 //    while (user1 === user2) {
 //        user2 = userIds[Math.floor(Math.random() * userIds.length)];
 //    }
 
-    // Generate random amount between 500 and 5000 (inclusive)
     const amt = Math.floor(Math.random() * (5000 - 500 + 1)) + 500;
     
-    // Append the row to our string buffer
     buffer += `${txId},${user1},${amt}\n`;
 
-    // 3. Every 50k rows, append to the file and empty the buffer
     if (i % chunkSize === 0 || i === 10000000) {
         fs.appendFileSync(fileName, buffer);
-        buffer = ''; // Clear RAM
+        buffer = '';
     }
 }
 

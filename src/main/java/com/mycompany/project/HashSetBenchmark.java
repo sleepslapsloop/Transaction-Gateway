@@ -24,11 +24,13 @@ public class HashSetBenchmark {
     private static final int WARMUP         = 50_000;
 
     private static final int[] SCALES = {
-        1_000_000,
-        2_000_000,
-        3_000_000,
-        4_000_000,
-        5_000_000
+        10, 20, 30, 40, 50,
+        100, 200, 300, 400, 500,
+        1_000, 2_000, 3_000, 4_000, 5_000,
+        10_000, 20_000, 30_000, 40_000, 50_000,
+        100_000, 200_000, 300_000, 400_000, 500_000,
+        1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000,
+        10_000_000
     };
 
     public static void main(String[] args) {
@@ -74,7 +76,7 @@ public class HashSetBenchmark {
 
         TransactionBloomFilter wbf = new TransactionBloomFilter(WARMUP * BITS_PER_ENTRY);
         HashSet<String> whs = new HashSet<>();
-        for (int i = 0; i < WARMUP; i++) { wbf.add(known[i]); whs.add(known[i]); }
+        for (int i = 0; i < WARMUP; i++) { wbf.add(known[i % n]); whs.add(known[i % n]); }
 
         long t0 = System.nanoTime();
         for (String id : known) bf.add(id);
